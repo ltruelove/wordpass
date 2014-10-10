@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2"
+	_ "gopkg.in/mgo.v2/bson"
 	"net/http"
 	//"net/url"
 	//"strings"
@@ -32,11 +33,12 @@ func main() {
 }
 
 type User struct {
-	Username  string
-	Password  string
-	First     string
-	Last      string
-	Passwords []Pass
+	Username           string
+	Password           string
+	First              string
+	Last               string
+	Passwords          []Pass `bson:"-"`
+	EncryptedPasswords string
 }
 
 type Pass struct {
@@ -54,19 +56,48 @@ func HandleLogin(rw http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
+	user.Passwords = append(user.Passwords, Pass{"pName", "pPass", "pUrl", "pDesc"})
+	user.EncryptPasswords()
+	user.SaveTest()
+
 	rw.Header().Set("Token", "****")
 	rw.WriteHeader(401)
 	rw.Write([]byte("401 Unauthorized"))
-	userJson, _ := json.Marshal(user)
-	fmt.Println(string(userJson))
+}
+
+func (u *User) EncryptPasswords() {
+	passes, err := json.Marshal(u.Passwords)
+	if err != nil {
+		panic(err)
+	}
+	u.EncryptedPasswords = string(passes)
+}
+
+func (u User) SaveTest() {
+	session, err := mgo.Dial("localhost")
+	if err != nil {
+		panic(err)
+	}
+
+	c := session.DB("wordpass").C("Users")
+	err = c.Insert(&u)
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(u.EncryptedPasswords)
+	fmt.Println("User saved\r\n")
+
+	defer session.Close()
 }
 
 func testMgo() {
 	session, err := mgo.Dial("localhost")
 	if err != nil {
 		panic(err)
-	} else {
-		fmt.Println("Mongo connection works\r\n")
 	}
+	fmt.Println("Mongo connection works\r\n")
+
 	defer session.Close()
 }
