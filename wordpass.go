@@ -4,12 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"gopkg.in/mgo.v2"
 	"net/http"
 	//"net/url"
 	//"strings"
 )
 
 func main() {
+	//Lets test our mongo db
+	testMgo()
+
+	//on to the rest of it
 	port := "8085"
 	fmt.Printf("Listening at :%s\n"+
 		"Routes:\n"+
@@ -54,4 +59,14 @@ func HandleLogin(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte("401 Unauthorized"))
 	userJson, _ := json.Marshal(user)
 	fmt.Println(string(userJson))
+}
+
+func testMgo() {
+	session, err := mgo.Dial("localhost")
+	if err != nil {
+		panic(err)
+	} else {
+		fmt.Println("Mongo connection works\r\n")
+	}
+	defer session.Close()
 }
