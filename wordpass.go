@@ -63,35 +63,29 @@ func HandleLogin(rw http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	user.Passwords = append(user.Passwords, Pass{"pName", "pPass", "pUrl", "pDesc"})
-	user.EncryptPasswords()
-	user.SaveTest()
 	testFindUser()
+	result := FindUser(user.Username, user.Password)
 
-	rw.Header().Set("Token", "****")
-	rw.WriteHeader(401)
-	rw.Write([]byte("401 Unauthorized"))
+	if result == nil {
+		rw.WriteHeader(401)
+		rw.Write([]byte("401 Unauthorized"))
+	} else {
+		rw.Header().Set("Token", "****")
+		rw.WriteHeader(200)
+	}
 }
 
 func testFindUser() {
-	session, err := mgo.Dial("localhost")
-	if err != nil {
-		panic(err)
-	}
-
-	c := session.DB("wordpass").C("Users")
 	key := []byte("Batman Punching The Easter Bunny") // 32 bytes
-	result := User{}
-	err = c.Find(bson.M{"username": "test"}).One(&result)
-	if err != nil {
-		log.Fatal(err)
-	}
+	result := FindUser("test", "testPW")
 
-	decrypted, err := decrypt(key, []byte(result.EncryptedPasswords))
-	if err != nil {
-		log.Fatal(err)
+	if result != nil {
+		decrypted, err := decrypt(key, []byte(result.EncryptedPasswords))
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Decrypted: %s\n", decrypted)
 	}
-	fmt.Printf("Decrypted: %s\n", decrypted)
 }
 
 func (u *User) EncryptPasswords() {
@@ -116,6 +110,27 @@ func (u *User) EncryptPasswords() {
 		log.Fatal(err)
 	}
 	fmt.Printf("Decrypted: %s\n", result)
+}
+
+func FindUser(username string, password string) *User {
+	session, err := mgo.Dial("localhost")
+	if err != nil {
+		panic(err)
+	}
+
+	user := User{}
+	c := session.DB("wordpass").C("Users")
+	err = c.Find(bson.M{"username": username,
+		"password": encryptPassword(password)}).One(&user)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return &user
+}
+
+func encryptPassword(password string) string {
+	return password
 }
 
 func (u User) SaveTest() {
