@@ -1,11 +1,18 @@
 package main
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2"
-	_ "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
+	"io"
+	"log"
 	"net/http"
 	//"net/url"
 	//"strings"
@@ -59,18 +66,56 @@ func HandleLogin(rw http.ResponseWriter, req *http.Request) {
 	user.Passwords = append(user.Passwords, Pass{"pName", "pPass", "pUrl", "pDesc"})
 	user.EncryptPasswords()
 	user.SaveTest()
+	testFindUser()
 
 	rw.Header().Set("Token", "****")
 	rw.WriteHeader(401)
 	rw.Write([]byte("401 Unauthorized"))
 }
 
+func testFindUser() {
+	session, err := mgo.Dial("localhost")
+	if err != nil {
+		panic(err)
+	}
+
+	c := session.DB("wordpass").C("Users")
+	key := []byte("Batman Punching The Easter Bunny") // 32 bytes
+	result := User{}
+	err = c.Find(bson.M{"username": "test"}).One(&result)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	decrypted, err := decrypt(key, []byte(result.EncryptedPasswords))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Decrypted: %s\n", decrypted)
+}
+
 func (u *User) EncryptPasswords() {
+	key := []byte("Batman Punching The Easter Bunny") // 32 bytes
+
 	passes, err := json.Marshal(u.Passwords)
 	if err != nil {
 		panic(err)
 	}
-	u.EncryptedPasswords = string(passes)
+	fmt.Printf("Original: %s\n", passes)
+
+	ciphertext, err := encrypt(key, passes)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%0x\n", ciphertext)
+
+	u.EncryptedPasswords = string(ciphertext)
+
+	result, err := decrypt(key, []byte(u.EncryptedPasswords))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Decrypted: %s\n", result)
 }
 
 func (u User) SaveTest() {
@@ -86,7 +131,6 @@ func (u User) SaveTest() {
 		panic(err)
 	}
 
-	fmt.Println(u.EncryptedPasswords)
 	fmt.Println("User saved\r\n")
 
 	defer session.Close()
@@ -100,4 +144,39 @@ func testMgo() {
 	fmt.Println("Mongo connection works\r\n")
 
 	defer session.Close()
+}
+
+func encrypt(key, text []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	b := base64.StdEncoding.EncodeToString(text)
+	ciphertext := make([]byte, aes.BlockSize+len(b))
+	iv := ciphertext[:aes.BlockSize]
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		return nil, err
+	}
+	cfb := cipher.NewCFBEncrypter(block, iv)
+	cfb.XORKeyStream(ciphertext[aes.BlockSize:], []byte(b))
+	return ciphertext, nil
+}
+
+func decrypt(key, text []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	if len(text) < aes.BlockSize {
+		return nil, errors.New("ciphertext too short")
+	}
+	iv := text[:aes.BlockSize]
+	text = text[aes.BlockSize:]
+	cfb := cipher.NewCFBDecrypter(block, iv)
+	cfb.XORKeyStream(text, text)
+	data, err := base64.StdEncoding.DecodeString(string(text))
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
