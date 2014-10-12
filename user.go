@@ -1,9 +1,11 @@
 package main
 
 import (
+	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -14,6 +16,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	//"code.google.com/p/go.crypto/bcrypt"
 )
 
 type User struct {
@@ -73,8 +76,8 @@ func Insert(rw http.ResponseWriter, req *http.Request) {
 
 	//save the user
 	c := session.DB("wordpass").C("Users")
-	user.Password = encryptPassword(user.Password)
-	user.EncryptPasswords()
+	user.EncryptPassword()
+	user.EncryptRecords()
 	err = c.Insert(&user)
 
 	if err != nil {
@@ -94,7 +97,8 @@ func HandleLogin(rw http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	testFindUser()
+	//testFindUser()
+	user.EncryptPassword()
 	result := FindUser(user.Username, user.Password)
 
 	if result == nil {
@@ -119,7 +123,7 @@ func testFindUser() {
 	}
 }
 
-func (u *User) EncryptPasswords() {
+func (u *User) EncryptRecords() {
 	key := []byte("Batman Punching The Easter Bunny") // 32 bytes
 
 	passes, err := json.Marshal(u.Passwords)
@@ -153,7 +157,7 @@ func FindUser(username string, password string) *User {
 	user := User{}
 	c := session.DB("wordpass").C("Users")
 	err = c.Find(bson.M{"username": username,
-		"password": encryptPassword(password)}).One(&user)
+		"password": password}).One(&user)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -161,9 +165,29 @@ func FindUser(username string, password string) *User {
 	return &user
 }
 
-func (u User) encryptPassword() {
+func (u *User) EncryptPassword() {
 	//add encryption routine here
+	salt := []byte("arrrrgh, ye be an old salt")
+	u.Password = string(HashPassword([]byte(u.Password), salt))
 }
+
+func clear(b []byte) {
+	for i := 0; i < len(b); i++ {
+		b[i] = 0
+	}
+}
+
+func HashPassword(password, salt []byte) []byte {
+	defer clear(password)
+	return pbkdf2.Key(password, salt, 4096, sha256.Size, sha256.New)
+}
+
+/* Just in case we need this for some reason later
+func Crypt(password []byte) ([]byte, error) {
+	defer clear(password)
+	return bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+}
+*/
 
 func encryptPassword(password string) string {
 	return password
