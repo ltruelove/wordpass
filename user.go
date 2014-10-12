@@ -161,6 +161,10 @@ func FindUser(username string, password string) *User {
 	return &user
 }
 
+func (u User) encryptPassword() {
+	//add encryption routine here
+}
+
 func encryptPassword(password string) string {
 	return password
 }
