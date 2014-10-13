@@ -1,0 +1,9 @@
+[Dev]
+DatabaseName = wordpass
+Salt = arrrrgh, ye be an old salt
+RecordSalt = Batman Punching The Easter Bunny
+
+[Prod]
+DatabaseName = wordpass
+Salt = arrrrgh, ye be an old salt
+RecordSalt = Batman Punching The Easter Bunny

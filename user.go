@@ -1,6 +1,7 @@
 package main
 
 import (
+	//"code.google.com/p/gcfg"
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/aes"
 	"crypto/cipher"
@@ -77,7 +78,11 @@ func Insert(rw http.ResponseWriter, req *http.Request) {
 	//save the user
 	c := session.DB("wordpass").C("Users")
 	user.EncryptPassword()
-	user.EncryptRecords()
+
+	/***
+	  this will eventually need to be something passed in or stored in a cookie or something
+	  ***/
+	user.EncryptRecords([]byte("userPass"))
 	err = c.Insert(&user)
 
 	if err != nil {
@@ -111,7 +116,7 @@ func HandleLogin(rw http.ResponseWriter, req *http.Request) {
 }
 
 func testFindUser() {
-	key := []byte("Batman Punching The Easter Bunny") // 32 bytes
+	key := []byte(RecordSalt) // 32 bytes
 	result := FindUser("test", "testPW")
 
 	if result != nil {
@@ -123,28 +128,40 @@ func testFindUser() {
 	}
 }
 
-func (u *User) EncryptRecords() {
-	key := []byte("Batman Punching The Easter Bunny") // 32 bytes
+func (u *User) EncryptRecords(userKey []byte) {
+	if len(userKey) < 1 {
+		panic("userKey cannot be empty")
+	}
+
+	key := []byte(RecordSalt) // 32 bytes
+	var fullKey []byte
+
+	if len(userKey) < 32 && len(userKey) > 0 {
+		//buffer the rest of fullKey with whatever fills it out to
+		//32 bytes from the RecordSalt
+		fullKey = userKey
+		//tempSlice will hold the rest of the RecordSalt after len of userKey
+		var tempSlice = key[len(userKey):len(key)]
+
+		for i := 0; i < len(tempSlice); i++ {
+			fullKey = append(fullKey, tempSlice[i])
+		}
+	} else {
+		//take the first 32 bytes of the userKey
+		fullKey = userKey[:31]
+	}
 
 	passes, err := json.Marshal(u.Passwords)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Original: %s\n", passes)
 
-	ciphertext, err := encrypt(key, passes)
+	ciphertext, err := encrypt(fullKey, passes)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%0x\n", ciphertext)
 
 	u.EncryptedPasswords = string(ciphertext)
-
-	result, err := decrypt(key, []byte(u.EncryptedPasswords))
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("Decrypted: %s\n", result)
 }
 
 func FindUser(username string, password string) *User {
@@ -167,7 +184,7 @@ func FindUser(username string, password string) *User {
 
 func (u *User) EncryptPassword() {
 	//add encryption routine here
-	salt := []byte("arrrrgh, ye be an old salt")
+	salt := []byte(PasswordSalt)
 	u.Password = string(HashPassword([]byte(u.Password), salt))
 }
 
