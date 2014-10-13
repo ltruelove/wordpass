@@ -12,15 +12,18 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/nu7hatch/gouuid"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"io"
 	"log"
 	"net/http"
+	"time"
 	//"code.google.com/p/go.crypto/bcrypt"
 )
 
 type User struct {
+	Id                 bson.ObjectId `json:"id" bson:"_id"`
 	Username           string
 	Password           string
 	First              string
@@ -36,6 +39,12 @@ type Pass struct {
 	Description string
 }
 
+type AccessToken struct {
+	Token        string
+	UserId       bson.ObjectId
+	LastAccessed time.Time
+}
+
 func (u User) registerRoutes(router *mux.Router) {
 	router.HandleFunc("/Login", HandleLogin).Methods("POST")
 	router.HandleFunc("/User", Insert).Methods("POST")
@@ -46,6 +55,14 @@ func (u User) registerRoutes(router *mux.Router) {
 }
 
 func Insert(rw http.ResponseWriter, req *http.Request) {
+	accessToken := AccessToken{UserId: bson.NewObjectId()}
+	tokenText := req.Header.Get("Token")
+	accessToken.Token = tokenText
+
+	if !validateToken(accessToken) {
+		panic("Invalid token")
+	}
+
 	//get the posted data into a User struct
 	params := json.NewDecoder(req.Body)
 	var user User
@@ -83,6 +100,7 @@ func Insert(rw http.ResponseWriter, req *http.Request) {
 	  this will eventually need to be something passed in or stored in a cookie or something
 	  ***/
 	user.EncryptRecords([]byte("userPass"))
+	user.Id = bson.NewObjectId()
 	err = c.Insert(&user)
 
 	if err != nil {
@@ -90,8 +108,6 @@ func Insert(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	rw.WriteHeader(200)
-	fmt.Println("User saved\r\n")
-
 }
 
 func HandleLogin(rw http.ResponseWriter, req *http.Request) {
@@ -110,9 +126,69 @@ func HandleLogin(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(401)
 		rw.Write([]byte("401 Unauthorized"))
 	} else {
-		rw.Header().Set("Token", "****")
+		accessToken := getToken(result.Id)
+		rw.Header().Set("Token", accessToken.Token)
 		rw.WriteHeader(200)
 	}
+}
+
+func validateToken(accessToken AccessToken) bool {
+	session, err := mgo.Dial("localhost")
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	c := session.DB("wordpass").C("Tokens")
+	err = c.Find(bson.M{"token": accessToken.Token}).One(&accessToken)
+	if err != nil {
+		panic(err)
+		return false
+	}
+
+	current := time.Now()
+	if accessToken.LastAccessed.Before(current) {
+		dif := current.Sub(accessToken.LastAccessed).Minutes()
+		if dif > 15 {
+			return false
+		} else {
+			accessToken.LastAccessed = time.Now()
+			err = c.Update(bson.M{"token": accessToken.Token}, accessToken)
+			if err != nil {
+				panic(err)
+			}
+			return true
+		}
+	} else {
+		return false
+	}
+
+}
+
+func getToken(userId bson.ObjectId) AccessToken {
+	accessToken := AccessToken{"", userId, time.Now()}
+	token, err := uuid.NewV4()
+	if err != nil {
+		panic(err)
+	}
+	accessToken.Token = token.String()
+
+	//connect to mongo
+	session, err := mgo.Dial("localhost")
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	//save the token
+	c := session.DB("wordpass").C("Tokens")
+	err = c.Insert(&accessToken)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return accessToken
 }
 
 func testFindUser() {
