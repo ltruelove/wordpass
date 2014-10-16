@@ -1,7 +1,6 @@
 package main
 
 import (
-	//"code.google.com/p/gcfg"
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/aes"
 	"crypto/cipher"
@@ -20,6 +19,7 @@ import (
 	"net/http"
 	"time"
 	//"code.google.com/p/go.crypto/bcrypt"
+	//"code.google.com/p/gcfg"
 )
 
 type User struct {
@@ -30,6 +30,7 @@ type User struct {
 	Last               string
 	Passwords          []Pass `bson:"-"`
 	EncryptedPasswords string
+	PasswordKey        string `bson:"-"`
 }
 
 type Pass struct {
@@ -47,11 +48,117 @@ type AccessToken struct {
 
 func (u User) registerRoutes(router *mux.Router) {
 	router.HandleFunc("/Login", HandleLogin).Methods("POST")
+	router.HandleFunc("/UserCreate", UserCreate).Methods("POST")
 	router.HandleFunc("/User", Insert).Methods("POST")
-	//router.HandleFunc("/User", Update).Methods("PUT")
+	router.HandleFunc("/User", Update).Methods("PUT")
 	//router.HandleFunc("/User", Delete).Methods("DELETE")
 	//router.HandleFunc("/User/{id}", Find).Methods("GET")
 	//router.HandleFunc("/User", Get).Methods("GET")
+}
+
+func UserCreate(rw http.ResponseWriter, req *http.Request) {
+	//get the posted data into a User struct
+	params := json.NewDecoder(req.Body)
+	var user User
+	err := params.Decode(&user)
+	if err != nil {
+		panic(err)
+	}
+
+	//connect to mongo
+	session, err := mgo.Dial("localhost")
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	//check for an existing user
+	existing := &User{}
+	conn := session.DB("wordpass").C("Users")
+	err = conn.Find(bson.M{"username": user.Username}).One(existing)
+	if err != nil {
+		//log.Fatal(err)
+	}
+
+	if existing.Username != "" {
+		rw.WriteHeader(409)
+		rw.Write([]byte("409 Conclict"))
+		panic("User exists")
+	}
+
+	//save the user
+	c := session.DB("wordpass").C("Users")
+	user.EncryptPassword()
+
+	user.EncryptRecords()
+	user.Id = bson.NewObjectId()
+	err = c.Insert(&user)
+
+	if err != nil {
+		panic(err)
+	}
+
+	rw.WriteHeader(200)
+}
+
+func Update(rw http.ResponseWriter, req *http.Request) {
+	accessToken := AccessToken{UserId: bson.NewObjectId()}
+	tokenText := req.Header.Get("Token")
+	accessToken.Token = tokenText
+
+	if !validateToken(&accessToken) {
+		panic("Invalid token")
+	}
+
+	//get the posted data into a User struct
+	params := json.NewDecoder(req.Body)
+	var user User
+	err := params.Decode(&user)
+	if err != nil {
+		panic(err)
+	}
+
+	//connect to mongo
+	session, err := mgo.Dial("localhost")
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	//check for an existing user
+	existing := &User{}
+	conn := session.DB("wordpass").C("Users")
+	err = conn.Find(bson.M{"_id": accessToken.UserId}).One(existing)
+	if err != nil {
+		panic(err)
+	}
+
+	if existing.Username == "" {
+		rw.WriteHeader(409)
+		rw.Write([]byte("409 Conclict"))
+		panic("User does not exist")
+	}
+
+	var change = mgo.Change{
+		ReturnNew: true,
+		Update: bson.M{
+			"$set": bson.M{
+				"username": user.Username,
+				"first":    user.First,
+				"last":     user.Last,
+			},
+		},
+	}
+
+	_, err = conn.FindId(existing.Id).Apply(change, existing)
+
+	if err != nil {
+		rw.WriteHeader(500)
+		rw.Write([]byte("500 Internal Server Error"))
+		panic("There was an error saving the user")
+	}
+
+	return
 }
 
 func Insert(rw http.ResponseWriter, req *http.Request) {
@@ -59,7 +166,7 @@ func Insert(rw http.ResponseWriter, req *http.Request) {
 	tokenText := req.Header.Get("Token")
 	accessToken.Token = tokenText
 
-	if !validateToken(accessToken) {
+	if !validateToken(&accessToken) {
 		panic("Invalid token")
 	}
 
@@ -99,7 +206,7 @@ func Insert(rw http.ResponseWriter, req *http.Request) {
 	/***
 	  this will eventually need to be something passed in or stored in a cookie or something
 	  ***/
-	user.EncryptRecords([]byte("userPass"))
+	user.EncryptRecords()
 	user.Id = bson.NewObjectId()
 	err = c.Insert(&user)
 
@@ -132,7 +239,7 @@ func HandleLogin(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func validateToken(accessToken AccessToken) bool {
+func validateToken(accessToken *AccessToken) bool {
 	session, err := mgo.Dial("localhost")
 	if err != nil {
 		panic(err)
@@ -140,7 +247,7 @@ func validateToken(accessToken AccessToken) bool {
 	defer session.Close()
 
 	c := session.DB("wordpass").C("Tokens")
-	err = c.Find(bson.M{"token": accessToken.Token}).One(&accessToken)
+	err = c.Find(bson.M{"token": accessToken.Token}).One(accessToken)
 	if err != nil {
 		panic(err)
 		return false
@@ -204,7 +311,9 @@ func testFindUser() {
 	}
 }
 
-func (u *User) EncryptRecords(userKey []byte) {
+func (u *User) EncryptRecords() {
+	userKey := []byte(u.PasswordKey)
+
 	if len(userKey) < 1 {
 		panic("userKey cannot be empty")
 	}
