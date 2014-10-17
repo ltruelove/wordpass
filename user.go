@@ -119,18 +119,15 @@ func UserCreate(rw http.ResponseWriter, req *http.Request) {
 }
 
 func Update(rw http.ResponseWriter, req *http.Request) {
-	accessToken := AccessToken{UserId: bson.NewObjectId()}
-	tokenText := req.Header.Get("Token")
-	accessToken.Token = tokenText
-
-	if !validateToken(&accessToken) {
-		panic("Invalid token")
+	tokenUser, err := validateToken(req)
+	if err != nil {
+		panic(err)
 	}
 
 	//get the posted data into a User struct
 	params := json.NewDecoder(req.Body)
 	var user User
-	err := params.Decode(&user)
+	err = params.Decode(&user)
 	if err != nil {
 		panic(err)
 	}
@@ -145,7 +142,7 @@ func Update(rw http.ResponseWriter, req *http.Request) {
 	//check for an existing user
 	existing := &User{}
 	conn := session.DB("wordpass").C("Users")
-	err = conn.Find(bson.M{"_id": accessToken.UserId}).One(existing)
+	err = conn.Find(bson.M{"_id": tokenUser.Id}).One(existing)
 	if err != nil {
 		panic(err)
 	}
@@ -179,18 +176,15 @@ func Update(rw http.ResponseWriter, req *http.Request) {
 }
 
 func Insert(rw http.ResponseWriter, req *http.Request) {
-	accessToken := AccessToken{UserId: bson.NewObjectId()}
-	tokenText := req.Header.Get("Token")
-	accessToken.Token = tokenText
-
-	if !validateToken(&accessToken) {
-		panic("Invalid token")
+	_, err := validateToken(req)
+	if err != nil {
+		panic(err)
 	}
 
 	//get the posted data into a User struct
 	params := json.NewDecoder(req.Body)
 	var user User
-	err := params.Decode(&user)
+	err = params.Decode(&user)
 	if err != nil {
 		panic(err)
 	}
@@ -256,37 +250,44 @@ func HandleLogin(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func validateToken(accessToken *AccessToken) bool {
+func validateToken(req *http.Request) (*User, error) {
+	accessToken := AccessToken{UserId: bson.NewObjectId()}
+	tokenText := req.Header.Get("Token")
+	accessToken.Token = tokenText
+
 	session, err := mgo.Dial("localhost")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+
 	defer session.Close()
 
 	c := session.DB("wordpass").C("Tokens")
 	err = c.Find(bson.M{"token": accessToken.Token}).One(accessToken)
 	if err != nil {
-		panic(err)
-		return false
+		return nil, err
 	}
 
 	current := time.Now()
 	if accessToken.LastAccessed.Before(current) {
 		dif := current.Sub(accessToken.LastAccessed).Minutes()
 		if dif > 15 {
-			return false
+			return nil, fmt.Errorf("Token has expired")
 		} else {
 			accessToken.LastAccessed = time.Now()
 			err = c.Update(bson.M{"token": accessToken.Token}, accessToken)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
-			return true
 		}
 	} else {
-		return false
+		return nil, fmt.Errorf("Token has expired")
 	}
 
+	user := &User{}
+	userC := session.DB("wordpass").C("Users")
+	err = userC.Find(bson.M{"_id": accessToken.UserId}).One(user)
+	return user, err
 }
 
 func getToken(userId bson.ObjectId) AccessToken {

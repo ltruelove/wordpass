@@ -18,12 +18,9 @@ func (u User) registerRecordRoutes(router *mux.Router) {
 
 func GetRecords(rw http.ResponseWriter, req *http.Request) {
 	//validte the API token
-	accessToken := AccessToken{UserId: bson.NewObjectId()}
-	tokenText := req.Header.Get("Token")
-	accessToken.Token = tokenText
-
-	if !validateToken(&accessToken) {
-		panic("Invalid token")
+	tokenUser, err := validateToken(req)
+	if err != nil {
+		panic(err)
 	}
 
 	//get the posted data into a slice of Passes
@@ -32,7 +29,7 @@ func GetRecords(rw http.ResponseWriter, req *http.Request) {
 
 	// The things that are REALLY needed here are the array of Pass records and
 	// the password key
-	err := params.Decode(&user)
+	err = params.Decode(&user)
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +44,7 @@ func GetRecords(rw http.ResponseWriter, req *http.Request) {
 	//check for an existing user
 	existing := &User{}
 	conn := session.DB("wordpass").C("Users")
-	err = conn.Find(bson.M{"_id": accessToken.UserId}).One(existing)
+	err = conn.Find(bson.M{"_id": tokenUser.Id}).One(existing)
 	if err != nil {
 		//log.Fatal(err)
 	}
@@ -71,12 +68,9 @@ func GetRecords(rw http.ResponseWriter, req *http.Request) {
 
 func SaveRecords(rw http.ResponseWriter, req *http.Request) {
 	//validte the API token
-	accessToken := AccessToken{UserId: bson.NewObjectId()}
-	tokenText := req.Header.Get("Token")
-	accessToken.Token = tokenText
-
-	if !validateToken(&accessToken) {
-		panic("Invalid token")
+	tokenUser, err := validateToken(req)
+	if err != nil {
+		panic(err)
 	}
 
 	//get the posted data into a slice of Passes
@@ -85,7 +79,7 @@ func SaveRecords(rw http.ResponseWriter, req *http.Request) {
 
 	// The things that are REALLY needed here are the array of Pass records and
 	// the password key
-	err := params.Decode(&user)
+	err = params.Decode(&user)
 	if err != nil {
 		panic(err)
 	}
@@ -111,7 +105,7 @@ func SaveRecords(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	//this saves the changed encrypted passwords string
-	_, err = conn.FindId(accessToken.UserId).Apply(change, &user)
+	_, err = conn.FindId(tokenUser.Id).Apply(change, &user)
 
 	if err != nil {
 		rw.WriteHeader(500)
