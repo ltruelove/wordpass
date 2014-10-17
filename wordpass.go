@@ -49,6 +49,7 @@ func main() {
 	router := mux.NewRouter()
 	user := User{}
 	user.registerRoutes(router)
+	user.registerRecordRoutes(router)
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/")))
 
 	//tell http to use the mux router
