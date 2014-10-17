@@ -35,6 +35,7 @@ type User struct {
 
 type Pass struct {
 	Name        string
+	Username    string
 	Password    string
 	URL         string
 	Description string
@@ -49,6 +50,8 @@ type AccessToken struct {
 func (u User) registerRoutes(router *mux.Router) {
 	router.HandleFunc("/Login", HandleLogin).Methods("POST")
 	router.HandleFunc("/UserCreate", UserCreate).Methods("POST")
+	router.HandleFunc("/Records", SaveRecords).Methods("POST")
+	router.HandleFunc("/RecordList", GetRecords).Methods("POST")
 	router.HandleFunc("/User", Insert).Methods("POST")
 	router.HandleFunc("/User", Update).Methods("PUT")
 	//router.HandleFunc("/User", Delete).Methods("DELETE")
@@ -56,6 +59,116 @@ func (u User) registerRoutes(router *mux.Router) {
 	//router.HandleFunc("/User", Get).Methods("GET")
 }
 
+func GetRecords(rw http.ResponseWriter, req *http.Request) {
+	//validte the API token
+	accessToken := AccessToken{UserId: bson.NewObjectId()}
+	tokenText := req.Header.Get("Token")
+	accessToken.Token = tokenText
+
+	if !validateToken(&accessToken) {
+		panic("Invalid token")
+	}
+
+	//get the posted data into a slice of Passes
+	params := json.NewDecoder(req.Body)
+	var user User
+
+	// The things that are REALLY needed here are the array of Pass records and
+	// the password key
+	err := params.Decode(&user)
+	if err != nil {
+		panic(err)
+	}
+
+	//connect to mongo
+	session, err := mgo.Dial("localhost")
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	//check for an existing user
+	existing := &User{}
+	conn := session.DB("wordpass").C("Users")
+	err = conn.Find(bson.M{"_id": accessToken.UserId}).One(existing)
+	if err != nil {
+		//log.Fatal(err)
+	}
+
+	userKey := []byte(user.PasswordKey)
+
+	if len(userKey) < 1 {
+		panic("userKey cannot be empty")
+	}
+
+	fullKey := GetFullKey(user.PasswordKey)
+
+	decrypted, decryptErr := decrypt(fullKey, []byte(existing.EncryptedPasswords))
+	if decryptErr != nil {
+		panic(decryptErr)
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.Write(decrypted)
+}
+
+func SaveRecords(rw http.ResponseWriter, req *http.Request) {
+	//validte the API token
+	accessToken := AccessToken{UserId: bson.NewObjectId()}
+	tokenText := req.Header.Get("Token")
+	accessToken.Token = tokenText
+
+	if !validateToken(&accessToken) {
+		panic("Invalid token")
+	}
+
+	//get the posted data into a slice of Passes
+	params := json.NewDecoder(req.Body)
+	var user User
+
+	// The things that are REALLY needed here are the array of Pass records and
+	// the password key
+	err := params.Decode(&user)
+	if err != nil {
+		panic(err)
+	}
+
+	//connect to mongo
+	session, err := mgo.Dial("localhost")
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+	conn := session.DB("wordpass").C("Users")
+
+	user.EncryptRecords()
+
+	//set up the change in the database
+	var change = mgo.Change{
+		ReturnNew: true,
+		Update: bson.M{
+			"$set": bson.M{
+				"encryptedpasswords": user.EncryptedPasswords,
+			},
+		},
+	}
+
+	//this saves the changed encrypted passwords string
+	_, err = conn.FindId(accessToken.UserId).Apply(change, &user)
+
+	if err != nil {
+		rw.WriteHeader(500)
+		rw.Write([]byte("500 Internal Server Error"))
+		panic(err)
+	}
+
+	rw.WriteHeader(200)
+}
+
+/***
+This will create a new user record. Make sure that Password and PasswordKey are
+set so that the encryption works on their records.
+***/
 func UserCreate(rw http.ResponseWriter, req *http.Request) {
 	//get the posted data into a User struct
 	params := json.NewDecoder(req.Body)
@@ -63,6 +176,18 @@ func UserCreate(rw http.ResponseWriter, req *http.Request) {
 	err := params.Decode(&user)
 	if err != nil {
 		panic(err)
+	}
+
+	if user.Username == "" {
+		panic("Username is required")
+	}
+
+	if user.Password == "" {
+		panic("Password is required")
+	}
+
+	if user.PasswordKey == "" {
+		panic("Password Key is required")
 	}
 
 	//connect to mongo
@@ -311,8 +436,8 @@ func testFindUser() {
 	}
 }
 
-func (u *User) EncryptRecords() {
-	userKey := []byte(u.PasswordKey)
+func GetFullKey(passwordKey string) []byte {
+	userKey := []byte(passwordKey)
 
 	if len(userKey) < 1 {
 		panic("userKey cannot be empty")
@@ -335,6 +460,12 @@ func (u *User) EncryptRecords() {
 		//take the first 32 bytes of the userKey
 		fullKey = userKey[:31]
 	}
+
+	return fullKey
+}
+
+func (u *User) EncryptRecords() {
+	fullKey := GetFullKey(u.PasswordKey)
 
 	passes, err := json.Marshal(u.Passwords)
 	if err != nil {
