@@ -15,7 +15,7 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"io"
-	"log"
+	//"log"
 	"net/http"
 	"time"
 	//"code.google.com/p/go.crypto/bcrypt"
@@ -367,7 +367,7 @@ func (u *User) EncryptRecords() {
 
 	ciphertext, err := encrypt(fullKey, passes)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	u.EncryptedPasswords = string(ciphertext)
@@ -385,7 +385,7 @@ func FindUser(username string, password string) *User {
 	err = c.Find(bson.M{"username": username,
 		"password": password}).One(&user)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	return &user
