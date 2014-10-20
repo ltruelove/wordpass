@@ -263,7 +263,7 @@ func validateToken(req *http.Request) (*User, error) {
 	defer session.Close()
 
 	c := session.DB("wordpass").C("Tokens")
-	err = c.Find(bson.M{"token": accessToken.Token}).One(accessToken)
+	err = c.Find(bson.M{"token": accessToken.Token}).One(&accessToken)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func testFindUser() {
 	if result != nil {
 		decrypted, err := decrypt(key, []byte(result.EncryptedPasswords))
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 		fmt.Printf("Decrypted: %s\n", decrypted)
 	}

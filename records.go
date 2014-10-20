@@ -25,11 +25,10 @@ func GetRecords(rw http.ResponseWriter, req *http.Request) {
 
 	//get the posted data into a slice of Passes
 	params := json.NewDecoder(req.Body)
-	var user User
+	var apiRequest ApiRequest
 
-	// The things that are REALLY needed here are the array of Pass records and
-	// the password key
-	err = params.Decode(&user)
+	// The thing that's REALLY needed here is the the password key
+	err = params.Decode(&apiRequest)
 	if err != nil {
 		panic(err)
 	}
@@ -49,13 +48,11 @@ func GetRecords(rw http.ResponseWriter, req *http.Request) {
 		//log.Fatal(err)
 	}
 
-	userKey := []byte(user.PasswordKey)
-
-	if len(userKey) < 1 {
+	if len(apiRequest.PasswordKey) < 1 {
 		panic("userKey cannot be empty")
 	}
 
-	fullKey := GetFullKey(user.PasswordKey)
+	fullKey := GetFullKey(apiRequest.PasswordKey)
 
 	decrypted, decryptErr := decrypt(fullKey, []byte(existing.EncryptedPasswords))
 	if decryptErr != nil {

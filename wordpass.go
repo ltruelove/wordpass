@@ -24,6 +24,10 @@ type Config struct {
 	}
 }
 
+type ApiRequest struct {
+	PasswordKey string
+}
+
 func main() {
 	//get our configs
 	var cfg Config
