@@ -62,6 +62,14 @@ function indexViewModel() {
             }
         });
 
+        self.logout = function(){
+            location.hash = '/';
+            self.user({Username: "", Password: ""});
+            self.decryptedPasswords(null);
+            self.loggedInUser(null);
+            self.token(null);
+        }
+
         Sammy(function() {
             this.get('', function() {
                 this.app.runRoute('get', '#Login');

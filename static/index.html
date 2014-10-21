@@ -17,6 +17,7 @@ Password: <input type="password" name="Password" data-bind="value: Password" />
 </div>
 <div data-bind="with: loggedInUser">
     <h3>Welcome <span data-bind="text: First"></span></h3>
+    <button data-bind="click: $root.logout">Logout</button>
     <p>Unlock your passwords by entering your key</p>
     <input type="password" name="PasswordKey" data-bind="value: $root.passwordKey" />
     <button data-bind="click: $root.unlock">Unlock</button>
