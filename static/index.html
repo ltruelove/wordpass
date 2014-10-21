@@ -4,14 +4,17 @@
     <title>TEST</title>
     <script type="text/javascript" src="/js/jquery-1.4.4.js"></script>
     <script type="text/javascript" src="/js/knockout-3.1.0.js"></script>
+    <script type="text/javascript" src="/js/sammy-latest.min.js"></script>
     <script type="text/javascript" src="/js/index.js"></script>
 </head>
     
 <body>THIS IS A TEST!!!
+<div class="login" data-bind="with: user">
 <h3>Login</h3>
-Username: <input type="text" name="Username" data-bind="value: user.Username" />
-Password: <input type="password" name="Password" data-bind="value: user.Password" />
-<button data-bind="click: login">Login</button>
+Username: <input type="text" name="Username" data-bind="value: Username" />
+Password: <input type="password" name="Password" data-bind="value: Password" />
+<button data-bind="click: $root.login">Login</button>
+</div>
 </body>
 
 

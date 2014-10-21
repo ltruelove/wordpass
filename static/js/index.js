@@ -2,7 +2,7 @@ function indexViewModel() {
     var self = this;
     self.token = "";
 
-    self.user = {Username: ko.observable(""), Password: ko.observable("")};
+    self.user = ko.observable({Username: "", Password: ""});
 
     self.login = function(){
         var userData = ko.toJS(self.user);
@@ -19,12 +19,19 @@ function indexViewModel() {
                 self.token = request.getResponseHeader("Token");
             },
             error: function(request, textStatus, errorThrown){
+                alert("Username and password combination doesn't exist");
                 /*
                 console.log(errorThrown);
                 console.log(textStatus);
                 */
             }
         });
+
+        Sammy(function() {
+            this.get('', function() {
+                this.app.runRoute('get', '#Login');
+            });
+        }).run();
     };
 }
 

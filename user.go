@@ -238,7 +238,7 @@ func HandleLogin(rw http.ResponseWriter, req *http.Request) {
 
 	//testFindUser()
 	user.EncryptPassword()
-	result := FindUser(user.Username, user.Password)
+	result, _ := FindUser(user.Username, user.Password)
 
 	if result == nil {
 		rw.WriteHeader(401)
@@ -307,6 +307,13 @@ func getToken(userId bson.ObjectId) AccessToken {
 
 	//save the token
 	c := session.DB("wordpass").C("Tokens")
+
+	_, err = c.RemoveAll(bson.M{"userid": userId})
+
+	if err != nil {
+		panic(err)
+	}
+
 	err = c.Insert(&accessToken)
 
 	if err != nil {
@@ -318,7 +325,7 @@ func getToken(userId bson.ObjectId) AccessToken {
 
 func testFindUser() {
 	key := []byte(RecordSalt) // 32 bytes
-	result := FindUser("test", "testPW")
+	result, _ := FindUser("test", "testPW")
 
 	if result != nil {
 		decrypted, err := decrypt(key, []byte(result.EncryptedPasswords))
@@ -373,10 +380,10 @@ func (u *User) EncryptRecords() {
 	u.EncryptedPasswords = string(ciphertext)
 }
 
-func FindUser(username string, password string) *User {
+func FindUser(username string, password string) (*User, error) {
 	session, err := mgo.Dial("localhost")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer session.Close()
 
@@ -385,10 +392,10 @@ func FindUser(username string, password string) *User {
 	err = c.Find(bson.M{"username": username,
 		"password": password}).One(&user)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return &user
+	return &user, nil
 }
 
 func (u *User) EncryptPassword() {
