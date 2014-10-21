@@ -22,6 +22,12 @@ import (
 	//"code.google.com/p/gcfg"
 )
 
+type HomeUser struct {
+	Username string
+	First    string
+	Last     string
+}
+
 type User struct {
 	Id                 bson.ObjectId `json:"id" bson:"_id"`
 	Username           string
@@ -247,6 +253,15 @@ func HandleLogin(rw http.ResponseWriter, req *http.Request) {
 		accessToken := getToken(result.Id)
 		rw.Header().Set("Token", accessToken.Token)
 		rw.WriteHeader(200)
+
+		homeUser := HomeUser{Username: result.Username, First: result.First, Last: result.Last}
+		marshaled, err := json.Marshal(homeUser)
+		if err != nil {
+			rw.WriteHeader(500)
+			rw.Write([]byte("Internal server error"))
+		}
+
+		rw.Write(marshaled)
 	}
 }
 
@@ -391,6 +406,7 @@ func FindUser(username string, password string) (*User, error) {
 	c := session.DB("wordpass").C("Users")
 	err = c.Find(bson.M{"username": username,
 		"password": password}).One(&user)
+
 	if err != nil {
 		return nil, err
 	}

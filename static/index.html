@@ -15,6 +15,18 @@ Username: <input type="text" name="Username" data-bind="value: Username" />
 Password: <input type="password" name="Password" data-bind="value: Password" />
 <button data-bind="click: $root.login">Login</button>
 </div>
+<div data-bind="with: loggedInUser">
+    <h3>Welcome <span data-bind="text: First"></span></h3>
+    <p>Unlock your passwords by entering your key</p>
+    <input type="password" name="PasswordKey" data-bind="value: $root.passwordKey" />
+    <button data-bind="click: $root.unlock">Unlock</button>
+</div>
+<div data-bind="foreach: decryptedPasswords">
+    <span data-bind="text: Name"></span>
+    <span data-bind="text: Username"></span>
+    <span data-bind="text: Password"></span>
+    <span data-bind="text: URL"></span>
+<div>
 </body>
 
 
