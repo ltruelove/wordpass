@@ -27,12 +27,20 @@ Password: <input type="password" name="Password" data-bind="value: Password" />
     <input type="password" name="PasswordKey" data-bind="value: $root.passwordKey" />
     <button data-bind="click: $root.unlock">Unlock</button>
 </div>
-<div data-bind="foreach: decryptedPasswords">
-    <span data-bind="text: Name"></span>
-    <span data-bind="text: Username"></span>
-    <span data-bind="text: Password"></span>
-    <span data-bind="text: URL"></span>
-<div>
+<div class="container-fluid" data-bind="with: passwordContainer">
+    <div class="row">
+        <div class="col-lg-1">Name</div>
+        <div class="col-lg-1">Username</div>
+        <div class="col-lg-1">Password</div>
+        <div class="col-lg-3">URL</div>
+    </div>
+    <div class="row" data-bind="foreach: decryptedPasswords">
+        <div data-bind="text: Name" class="col-lg-1"></div>
+        <div data-bind="text: Username" class="col-lg-1"></div>
+        <div data-bind="text: Password" class="col-lg-1"></div>
+        <div data-bind="text: URL" class="col-lg-3"></div>
+    </div>
+</div>
 </body>
 
 

@@ -5,7 +5,7 @@ function indexViewModel() {
     self.user = ko.observable({Username: "", Password: ""});
     self.loggedInUser = ko.observable();
     self.passwordKey = ko.observable();
-    self.decryptedPasswords = ko.observableArray();
+    self.passwordContainer = ko.observable();
 
     self.unlock = function(){
         var userData = {PasswordKey: self.passwordKey()};
@@ -19,7 +19,8 @@ function indexViewModel() {
             dataType: "json",
             success: function(data, textStatus, request){
                 self.passwordKey(null);
-                self.decryptedPasswords(data);
+                var decrypted = ko.observableArray(data);
+                self.passwordContainer({decryptedPasswords:decrypted});
             },
             error: function(request, textStatus, errorThrown){
                 alert("There was a problem fetching your passwords.");
@@ -53,7 +54,7 @@ function indexViewModel() {
 
         self.logout = function(){
             self.user({Username: "", Password: ""});
-            self.decryptedPasswords(null);
+            self.passwordContainer(null);
             self.loggedInUser(null);
             self.token = null;
         }
