@@ -14,6 +14,21 @@ import (
 func (u User) registerRecordRoutes(router *mux.Router) {
 	router.HandleFunc("/Records", SaveRecords).Methods("POST")
 	router.HandleFunc("/RecordList", GetRecords).Methods("POST")
+	router.HandleFunc("/Record/Blank", GetBlank).Methods("GET")
+}
+
+func GetBlank(rw http.ResponseWriter, req *http.Request) {
+	pass := Pass{}
+	result, err := json.Marshal(pass)
+
+	if err != nil {
+		rw.WriteHeader(500)
+		rw.Write([]byte("There was an error retrieving the blank record"))
+		return
+	}
+
+	rw.WriteHeader(200)
+	rw.Write(result)
 }
 
 func GetRecords(rw http.ResponseWriter, req *http.Request) {
@@ -67,7 +82,9 @@ func SaveRecords(rw http.ResponseWriter, req *http.Request) {
 	//validte the API token
 	tokenUser, err := validateToken(req)
 	if err != nil {
-		panic(err)
+		rw.WriteHeader(401)
+		rw.Write([]byte("Token is invalid"))
+		return
 	}
 
 	//get the posted data into a slice of Passes
@@ -78,17 +95,43 @@ func SaveRecords(rw http.ResponseWriter, req *http.Request) {
 	// the password key
 	err = params.Decode(&user)
 	if err != nil {
-		panic(err)
+		rw.WriteHeader(500)
+		rw.Write([]byte("Could not decode the data"))
+		return
 	}
 
 	//connect to mongo
 	session, err := mgo.Dial("localhost")
 	if err != nil {
-		panic(err)
+		rw.WriteHeader(500)
+		rw.Write([]byte("Connection error"))
+		return
 	}
 	defer session.Close()
 	conn := session.DB("wordpass").C("Users")
 
+	existing := &User{}
+	err = conn.Find(bson.M{"_id": tokenUser.Id}).One(existing)
+	if err != nil {
+		rw.WriteHeader(404)
+		rw.Write([]byte("User not found"))
+		return
+	}
+
+	if len(user.PasswordKey) < 1 {
+		panic("userKey cannot be empty")
+	}
+
+	fullKey := GetFullKey(user.PasswordKey)
+
+	_, decryptErr := decrypt(fullKey, []byte(existing.EncryptedPasswords))
+	if decryptErr != nil {
+		rw.WriteHeader(401)
+		rw.Write([]byte("Password key is incorrect"))
+		return
+	}
+
+	//if our user key is correct then we can continue
 	user.EncryptRecords()
 
 	//set up the change in the database
@@ -107,8 +150,9 @@ func SaveRecords(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		rw.WriteHeader(500)
 		rw.Write([]byte("500 Internal Server Error"))
-		panic(err)
+		return
 	}
 
 	rw.WriteHeader(200)
+	rw.Write([]byte("success"))
 }

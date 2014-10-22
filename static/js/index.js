@@ -18,7 +18,7 @@ function indexViewModel() {
             contentType: "application/json",
             dataType: "json",
             success: function(data, textStatus, request){
-                self.passwordKey(null);
+                //self.passwordKey(null);
                 var decrypted = ko.observableArray(data);
                 self.passwordContainer({decryptedPasswords:decrypted});
             },
@@ -51,13 +51,49 @@ function indexViewModel() {
                 alert("Username and password combination doesn't exist");
             }
         });
+    };
 
-        self.logout = function(){
-            self.user({Username: "", Password: ""});
-            self.passwordContainer(null);
-            self.loggedInUser(null);
-            self.token = null;
+    self.logout = function(){
+        self.user({Username: "", Password: ""});
+        self.passwordContainer(null);
+        self.loggedInUser(null);
+        self.token = null;
+        self.passwordKey(null);
+    };
+
+    self.addBlank = function() {
+        $.get('/Record/Blank', function(data) {
+            if (data != null) {
+                self.passwordContainer().decryptedPasswords.push(ko.observable(data));
+            }
+        }, 'json');
+    };
+
+    self.saveAll = function(){
+        var userData = {PasswordKey: self.passwordKey(), Passwords: self.passwordContainer().decryptedPasswords()};
+        var stringData = JSON.stringify(userData);
+
+        if(self.passwordKey() == null || self.passwordKey() == ""){
+            alert("You must enter your password key in order to save the records.");
+            return;
         }
+
+        $.ajax({
+            cache: false,
+            url: '/Records',
+            type: 'POST',
+            data: stringData,
+            contentType: "application/json",
+            success: function(data, textStatus, request){
+                alert("Save was successful");
+            },
+            error: function(request, textStatus, errorThrown){
+                alert("There was a problem saving the records");
+            },
+            beforeSend: function(request){
+                request.setRequestHeader("Token", self.token);
+            }
+        });
     };
 }
 

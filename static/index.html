@@ -2,7 +2,7 @@
 
 <head>
     <title>TEST</title>
-    <script type="text/javascript" src="/js/jquery-1.4.4.js"></script>
+    <script type="text/javascript" src="/js/jquery-1.11.1.min.js"></script>
     <script type="text/javascript" src="/js/knockout-3.1.0.js"></script>
     <script type="text/javascript" src="/js/sammy-latest.min.js"></script>
     <script type="text/javascript" src="/js/index.js"></script>
@@ -22,25 +22,44 @@ Password: <input type="password" name="Password" data-bind="value: Password" />
 </div>
 <div data-bind="with: loggedInUser">
     <h3>Welcome <span data-bind="text: First"></span></h3>
-    <button data-bind="click: $root.logout">Logout</button>
+    <button data-bind="click: $root.logout">Logout</button><br/><br/>
     <p>Unlock your passwords by entering your key</p>
     <input type="password" name="PasswordKey" data-bind="value: $root.passwordKey" />
     <button data-bind="click: $root.unlock">Unlock</button>
 </div>
 <div class="container-fluid" data-bind="with: passwordContainer">
+    <br/><br/>
+    <button data-bind="click: $root.saveAll">Save All</button><button data-bind="click: $root.addBlank">Add New</button><br/><br/>
     <div class="row">
-        <div class="col-lg-1">Name</div>
-        <div class="col-lg-1">Username</div>
-        <div class="col-lg-1">Password</div>
-        <div class="col-lg-3">URL</div>
+        <div class="col-lg-2">Name</div>
+        <div class="col-lg-2">Username</div>
+        <div class="col-lg-2">Password</div>
+        <div class="col-lg-2">URL</div>
+        <div class="col-lg-2">Description</div>
     </div>
-    <div class="row" data-bind="foreach: decryptedPasswords">
-        <div data-bind="text: Name" class="col-lg-1"></div>
-        <div data-bind="text: Username" class="col-lg-1"></div>
-        <div data-bind="text: Password" class="col-lg-1"></div>
-        <div data-bind="text: URL" class="col-lg-3"></div>
-    </div>
+    <form class="form-inline" role="form">
+        <div data-bind="foreach: decryptedPasswords">
+            <div class="row">
+                <div class="form-group col-lg-2">
+                    <input type="text" class="form-control" placeholder="Name" data-bind="value: Name" />
+                </div>
+                <div class="form-group col-lg-2">
+                    <input type="text" class="form-control" placeholder="Username" data-bind="value: Username" />
+                </div>
+                <div class="form-group col-lg-2">
+                    <input type="text" class="form-control" placeholder="Password" data-bind="value: Password" />
+                </div>
+                <div class="form-group col-lg-2">
+                    <input type="text" class="form-control" placeholder="URL" data-bind="value: URL" />
+                </div>
+                <div class="form-group col-lg-2">
+                    <input type="text" class="form-control" placeholder="Description" data-bind="value: Description" />
+                </div>
+            </div>
+        </div>
+    </form>
 </div>
+
 </body>
 
 
