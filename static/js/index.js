@@ -112,12 +112,17 @@ var app = Sammy('#main', function(){
     });
 
     this.get('#/userHome', function (context) {
-        context.partial('../userHome.html',null, function(){
-            var container = document.getElementById('userHome')
-            ko.cleanNode(container);
-            ko.applyBindings(model,container);
-        });
-
+        /*
+        if(model.token == ""){
+            app.runRoute('get','#/');
+        }else{
+        */
+            context.partial('../userHome.html',null, function(){
+                var container = document.getElementById('userHome')
+                ko.cleanNode(container);
+                ko.applyBindings(model,container);
+            });
+        //}
     });
 
     /*
