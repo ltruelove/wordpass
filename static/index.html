@@ -28,55 +28,13 @@
         </style>
     </head>
     
-<body id="main">
+<body>
     <div class="container">
         <h2>Wordpass</h2>
 
-        <div class="login" data-bind="with: user">
-            <h3>Login</h3>
-            Username: <input type="text" name="Username" data-bind="value: Username" />
-            Password: <input type="password" name="Password" data-bind="value: Password" />
-            <button data-bind="click: $root.login">Login</button>
+        <div id="main">
         </div>
 
-        <div data-bind="with: loggedInUser">
-            <h3>Welcome <span data-bind="text: First"></span></h3>
-            <button data-bind="click: $root.logout">Logout</button><br/><br/>
-            <p>Unlock your passwords by entering your key</p>
-            <input type="password" name="PasswordKey" data-bind="value: $root.passwordKey" />
-            <button data-bind="click: $root.unlock">Unlock</button>
-        </div>
-
-        <div data-bind="with: passwordContainer">
-            <br/><br/>
-            <button data-bind="click: $root.saveAll">Save All</button><button data-bind="click: $root.addBlank">Add New</button><br/><br/>
-            <div class="row">
-                <div class="col-md-2">Name</div>
-                <div class="col-md-2">Username</div>
-                <div class="col-md-2">Password</div>
-                <div class="col-md-2">URL</div>
-                <div class="col-md-2">Description</div>
-            </div>
-            <div data-bind="foreach: decryptedPasswords">
-                <div class="row">
-                    <div class="form-group col-md-2">
-                        <input type="text" class="form-control" placeholder="Name" data-bind="value: Name" />
-                    </div>
-                    <div class="form-group col-md-2">
-                        <input type="text" class="form-control" placeholder="Username" data-bind="value: Username" />
-                    </div>
-                    <div class="form-group col-md-2">
-                        <input type="text" class="form-control" placeholder="Password" data-bind="value: Password" />
-                    </div>
-                    <div class="form-group col-md-2">
-                        <input type="text" class="form-control" placeholder="URL" data-bind="value: URL" />
-                    </div>
-                    <div class="form-group col-md-2">
-                        <input type="text" class="form-control" placeholder="Description" data-bind="value: Description" />
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
         <script type="text/javascript" src="/js/jquery-1.11.1.min.js"></script>

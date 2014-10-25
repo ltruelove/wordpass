@@ -46,6 +46,7 @@ function indexViewModel() {
                 self.token = request.getResponseHeader("Token");
                 self.user(null);
                 self.loggedInUser(data);
+                location.hash = "/userHome";
             },
             error: function(request, textStatus, errorThrown){
                 alert("Username and password combination doesn't exist");
@@ -59,6 +60,7 @@ function indexViewModel() {
         self.loggedInUser(null);
         self.token = null;
         self.passwordKey(null);
+        location.hash = "/";
     };
 
     self.addBlank = function() {
@@ -97,7 +99,40 @@ function indexViewModel() {
     };
 }
 
+var model = new indexViewModel();
+
+var app = Sammy('#main', function(){
+    this.get('#/', function (context) {
+        context.partial('../home.html',null, function(){
+            var container = document.getElementById('login')
+            ko.cleanNode(container);
+            ko.applyBindings(model,container);
+        });
+
+    });
+
+    this.get('#/userHome', function (context) {
+        context.partial('../userHome.html',null, function(){
+            var container = document.getElementById('userHome')
+            ko.cleanNode(container);
+            ko.applyBindings(model,container);
+        });
+
+    });
+
+    /*
+    this.get('#/findCourt', function(context){
+        context.partial('../findCourt.html',null, function(){
+            var container = document.getElementById('findCourts')
+            ko.cleanNode(container);
+            ko.applyBindings(model,container);
+        });
+    });    
+    */
+
+});
+
 $().ready(function(){
-    ko.applyBindings(new indexViewModel());
+    app.run('#/');
 });
 
