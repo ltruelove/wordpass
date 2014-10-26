@@ -71,6 +71,14 @@ function indexViewModel() {
         }, 'json');
     };
 
+    self.delete = function(record) {
+        var i = self.passwordContainer().decryptedPasswords().indexOf(record);
+        if(i != -1) {
+            self.passwordContainer().decryptedPasswords.splice(i, 1);
+            self.saveAll();
+        }
+    };
+
     self.saveAll = function(){
         var userData = {PasswordKey: self.passwordKey(), Passwords: self.passwordContainer().decryptedPasswords()};
         var stringData = JSON.stringify(userData);
