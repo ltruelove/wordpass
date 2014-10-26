@@ -66,7 +66,7 @@ function indexViewModel() {
     self.addBlank = function() {
         $.get('/Record/Blank', function(data) {
             if (data != null) {
-                self.passwordContainer().decryptedPasswords.push(ko.observable(data));
+                self.passwordContainer().decryptedPasswords.push(data);
             }
         }, 'json');
     };
