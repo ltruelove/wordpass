@@ -3,7 +3,12 @@
         <h3>Welcome <span data-bind="text: First"></span></h3>
         <button data-bind="click: $root.logout">Logout</button><br/><br/>
         <p>Unlock your passwords by entering your key</p>
-        <input type="password" name="PasswordKey" data-bind="value: $root.passwordKey" />
+        <input type="password" name="PasswordKey" data-bind="value: $root.passwordKey,event: { keyup: function(elements, event){
+        var keyCode = (event.which ? event.which : event.keyCode);
+        if(keyCode === 13){
+            $root.unlock();
+        }
+        }}" />
         <button data-bind="click: $root.unlock">Unlock</button>
     </div>
 
