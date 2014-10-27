@@ -2,6 +2,7 @@ package main
 
 import (
 	"code.google.com/p/gcfg"
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2"
@@ -28,6 +29,11 @@ type ApiRequest struct {
 	PasswordKey string
 }
 
+type SetupCheckResponse struct {
+	IsNew bool
+	User  *User
+}
+
 func main() {
 	//get our configs
 	var cfg Config
@@ -44,14 +50,12 @@ func main() {
 
 	//on to the rest of it
 	port := "8085"
-	fmt.Printf("Listening at :%s\n"+
-		"Routes:\n"+
-		"/\n"+
-		"/Login\n", port)
+	fmt.Printf("Listening at :%s\n", port)
 
 	//use gorilla mux for handling routes
 	router := mux.NewRouter()
 	user := User{}
+	router.HandleFunc("/setupCheck", SetupCheck).Methods("GET")
 	user.registerRoutes(router)
 	user.registerRecordRoutes(router)
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/")))
@@ -59,6 +63,44 @@ func main() {
 	//tell http to use the mux router
 	http.Handle("/", router)
 	http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
+}
+
+func SetupCheck(rw http.ResponseWriter, req *http.Request) {
+	//connect to mongo
+	session, err := mgo.Dial("localhost")
+	if err != nil {
+		rw.WriteHeader(500)
+		rw.Write([]byte("500 Server Error"))
+	}
+
+	defer session.Close()
+
+	conn := session.DB("wordpass").C("Users")
+	records, err := conn.Count()
+	if err != nil {
+		rw.WriteHeader(500)
+		rw.Write([]byte("500 Server Error"))
+	}
+
+	response := SetupCheckResponse{IsNew: false, User: nil}
+
+	if records < 1 {
+		response.IsNew = true
+	}
+
+	result, err := json.Marshal(response)
+
+	if err != nil {
+		rw.WriteHeader(500)
+		rw.Write([]byte("Server Error"))
+		return
+	}
+	/*
+	   We'll check for a user token in the session here later
+	*/
+
+	rw.WriteHeader(200)
+	rw.Write(result)
 }
 
 func testMgo() {

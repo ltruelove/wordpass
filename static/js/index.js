@@ -2,7 +2,7 @@ function indexViewModel() {
     var self = this;
     self.token = "";
 
-    self.user = ko.observable({Username: "", Password: ""});
+    self.user = ko.observable({Username: "", Password: "", First: "", Last: "", PasswordKey:""});
     self.loggedInUser = ko.observable();
     self.passwordKey = ko.observable();
     self.passwordContainer = ko.observable();
@@ -105,32 +105,91 @@ function indexViewModel() {
             }
         });
     };
+
+    self.createUserAdmin = function(){
+        if(!self.validateUser()){
+            return false;
+        }
+
+        var user = self.user();
+
+        $.ajax({
+            cache: false,
+            url: '/UserCreateAdmin',
+            type: 'POST',
+            data: JSON.stringify(user),
+            contentType: "application/json",
+            success: function(data, textStatus, request){
+                self.login();
+            },
+            error: function(request, textStatus, errorThrown){
+                alert("There was a problem creating the records");
+            }
+        });
+    };
+
+    self.validateUser = function(){
+        var repeatInput = $('#repeatPassword');
+        if(self.user().Password != repeatInput.val()){
+            repeatInput.focus();
+            alert("Passwords do not match");
+            return false;
+        }
+
+        var keyRepeat = $('#repeatPasswordKey');
+        if(self.user().PasswordKey != keyRepeat.val()){
+            keyRepeat.focus();
+            alert("Password keys do not match");
+            return false;
+        }
+
+        return true;
+    }
 }
 
 var model = new indexViewModel();
 
 var app = Sammy('#main', function(){
     this.get('#/', function (context) {
-        context.partial('../home.html',null, function(){
-            var container = document.getElementById('login')
-            ko.cleanNode(container);
-            ko.applyBindings(model,container);
+        $.ajax({url: "/setupCheck",
+            type: "GET",
+            dataType: "json",
+            success: function(data){
+                if(data.IsNew){
+                    context.app.runRoute('get', '#/setup');
+                }else{
+                    // if an existing user wasn't returned show the login page
+                    if(!data.user){
+                        context.partial('../home.html',null, function(){
+                            var container = document.getElementById('login')
+                            ko.cleanNode(container);
+                            ko.applyBindings(model,container);
+                        });
+                    }else{ //go to the user home
+                        context.app.runRoute('get', '#/userHome');
+                    }
+                }
+
+            }
         });
+
 
     });
 
+    this.get('#/setup', function(context) {
+        context.partial('../setup.html',null, function(){
+            var container = document.getElementById('setup')
+            ko.cleanNode(container);
+            ko.applyBindings(model,container);
+        });
+    });
+
     this.get('#/userHome', function (context) {
-        /*
-        if(model.token == ""){
-            app.runRoute('get','#/');
-        }else{
-        */
-            context.partial('../userHome.html',null, function(){
-                var container = document.getElementById('userHome')
-                ko.cleanNode(container);
-                ko.applyBindings(model,container);
-            });
-        //}
+        context.partial('../userHome.html',null, function(){
+            var container = document.getElementById('userHome')
+            ko.cleanNode(container);
+            ko.applyBindings(model,container);
+        });
     });
 
     /*
