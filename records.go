@@ -71,10 +71,17 @@ func GetRecords(rw http.ResponseWriter, req *http.Request) {
 
 	decrypted, decryptErr := decrypt(fullKey, []byte(existing.EncryptedPasswords))
 	if decryptErr != nil {
-		panic(decryptErr)
+		rw.WriteHeader(500)
+		rw.Write([]byte(decryptErr.Error()))
+		return
+	}
+
+	if decrypted == nil {
+		decrypted = []byte("[]")
 	}
 
 	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(200)
 	rw.Write(decrypted)
 }
 

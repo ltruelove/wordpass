@@ -1,0 +1,33 @@
+<div id="setup" class="container-fluid">
+    <form role="form" data-bind="with: user,submit: $root.createUserAdmin">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input required data-bind="value: Username" type="text" class="form-control" id="username" placeholder="Enter username">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input required data-bind="value: Password" type="password" class="form-control" id="password" placeholder="Password">
+      </div>
+      <div class="form-group">
+        <label for="repeatPassword">Repeat Password</label>
+        <input required type="password" class="form-control" id="repeatPassword" placeholder="Repeat Password">
+      </div>
+      <div class="form-group">
+        <label for="first">First Name</label>
+        <input data-bind="value: First" type="text" class="form-control" id="first" placeholder="Enter first name">
+      </div>
+      <div class="form-group">
+        <label for="last">Last Name</label>
+        <input data-bind="value: Last" type="text" class="form-control" id="last" placeholder="Enter last name">
+      </div>
+      <div class="form-group">
+        <label for="passwordKey">Password Key</label>
+        <input required data-bind="value: PasswordKey" type="password" class="form-control" id="passwordKey" placeholder="Key for password list">
+      </div>
+      <div class="form-group">
+        <label for="repeatPassword">Repeat Password Key</label>
+        <input required type="password" class="form-control" id="repeatPasswordKey" placeholder="Repeat Password Key">
+      </div>
+      <button type="submit" class="btn btn-default">Submit</button>
+    </form>
+</div>
